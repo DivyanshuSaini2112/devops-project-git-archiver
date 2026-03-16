@@ -85,25 +85,17 @@ logger = logging.getLogger(__name__)
 def identify_stale_repos(
     repos: List[Repository], stale_days: int = STALE_DAYS
 ) -> List[Repository]:
-    """
-    Filter repositories that have had no commits for *stale_days* days.
-
-    Args:
-        repos:      Full list of Repository objects from the GitHub API.
-        stale_days: Inactivity threshold in days.
-
-    Returns:
-        Subset of repos considered stale.
-    """
     cutoff = datetime.now(tz=timezone.utc) - timedelta(days=stale_days)
     stale: List[Repository] = []
+
+    # Create ONE client for all repos, not one per repo
+    client = GitHubClient(token=GITHUB_TOKEN)
 
     for repo in repos:
         if repo.archived:
             logger.debug("Skipping already-archived repo: %s", repo.full_name)
             continue
 
-        client = GitHubClient(token=GITHUB_TOKEN)
         last_commit = client.get_last_commit_date(repo)
 
         if last_commit is None:
@@ -158,9 +150,7 @@ def clone_repo(repo_url: str, dest_dir: str) -> str:
         timeout=300,
     )
     if result.returncode != 0:
-        raise RuntimeError(
-            f"git clone failed for {repo_url}:\n{result.stderr}"
-        )
+        raise RuntimeError(f"git clone failed for {repo_url}:\n{result.stderr}")
 
     logger.info("Clone complete: '%s'", dest_dir)
     return dest_dir
@@ -196,9 +186,7 @@ def generate_archive(source_dir: str, archive_path: str) -> str:
         )
 
     size_mb = os.path.getsize(archive_path) / (1024 * 1024)
-    logger.info(
-        "Archive created: '%s' (%.2f MB)", archive_path, size_mb
-    )
+    logger.info("Archive created: '%s' (%.2f MB)", archive_path, size_mb)
     return archive_path
 
 
@@ -247,15 +235,11 @@ def archive_repo(
         clone_url = repo.clone_url
         # Embed token for private repositories
         if GITHUB_TOKEN:
-            clone_url = clone_url.replace(
-                "https://", f"https://{GITHUB_TOKEN}@"
-            )
+            clone_url = clone_url.replace("https://", f"https://{GITHUB_TOKEN}@")
         try:
             clone_repo(clone_url, clone_dest)
         except RuntimeError as exc:
-            logger.error(
-                "Clone failed for '%s': %s", repo.full_name, exc, extra=extra
-            )
+            logger.error("Clone failed for '%s': %s", repo.full_name, exc, extra=extra)
             return None
 
         # 2. Generate summary.md
@@ -275,7 +259,9 @@ def archive_repo(
 
         # 3. Compress
         ext = "zip" if ARCHIVE_FORMAT == "zip" else "tar.gz"
-        archive_filename = f"{repo.name}_{datetime.now(tz=timezone.utc).strftime('%Y%m%d')}.{ext}"
+        archive_filename = (
+            f"{repo.name}_{datetime.now(tz=timezone.utc).strftime('%Y%m%d')}.{ext}"
+        )
         archive_tmp = os.path.join(tmp_dir, archive_filename)
         generate_archive(clone_dest, archive_tmp)
 

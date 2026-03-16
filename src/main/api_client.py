@@ -11,7 +11,7 @@ from typing import Dict, List, Optional
 from github import Github, GithubException
 from github.Repository import Repository
 
-from src.main.config import GITHUB_TOKEN, STALE_DAYS
+from src.main.config import GITHUB_TOKEN
 
 logger = logging.getLogger(__name__)
 
@@ -21,9 +21,7 @@ class GitHubClient:
 
     def __init__(self, token: str = GITHUB_TOKEN):
         if not token:
-            raise ValueError(
-                "GitHub token is required. Set API_KEY in your .env file."
-            )
+            raise ValueError("GitHub token is required. Set API_KEY in your .env file.")
         self._client = Github(token)
         logger.info("GitHubClient initialised successfully.")
 
@@ -54,32 +52,18 @@ class GitHubClient:
 
     def get_last_commit_date(self, repo: Repository) -> Optional[datetime]:
         """
-        Return the UTC datetime of the most recent commit on the default branch.
-
-        Args:
-            repo: A PyGitHub Repository object.
-
-        Returns:
-            datetime (UTC) or None if the repository has no commits.
+        Return the UTC datetime of the most recent push.
+        Uses repo.pushed_at (already fetched with repo metadata — no extra API call).
         """
         try:
-            commits = repo.get_commits()
-            latest = commits[0]
-            commit_date = latest.commit.author.date
-            # Ensure timezone-aware
-            if commit_date.tzinfo is None:
-                commit_date = commit_date.replace(tzinfo=timezone.utc)
-            logger.debug(
-                "Last commit for '%s': %s", repo.full_name, commit_date.isoformat()
-            )
-            return commit_date
-        except GithubException as exc:
-            logger.warning(
-                "Could not fetch commits for '%s': %s", repo.full_name, exc
-            )
-            return None
-        except IndexError:
-            logger.warning("Repository '%s' appears to be empty.", repo.full_name)
+            pushed_at = repo.pushed_at  # already available, no API call needed
+            if pushed_at is None:
+                return None
+            if pushed_at.tzinfo is None:
+                pushed_at = pushed_at.replace(tzinfo=timezone.utc)
+            return pushed_at
+        except Exception as exc:
+            logger.warning("Could not get push date for '%s': %s", repo.full_name, exc)
             return None
 
     def get_contributors(self, repo: Repository) -> List[str]:
@@ -95,9 +79,7 @@ class GitHubClient:
         try:
             contributors = list(repo.get_contributors())
             logins = [c.login for c in contributors]
-            logger.debug(
-                "Found %d contributors for '%s'.", len(logins), repo.full_name
-            )
+            logger.debug("Found %d contributors for '%s'.", len(logins), repo.full_name)
             return logins
         except GithubException as exc:
             logger.warning(
@@ -115,8 +97,7 @@ class GitHubClient:
         try:
             contributors = list(repo.get_contributors())
             stats = [
-                {"login": c.login, "commits": c.contributions}
-                for c in contributors[:5]
+                {"login": c.login, "commits": c.contributions} for c in contributors[:5]
             ]
             return stats
         except GithubException as exc:
@@ -169,9 +150,7 @@ class GitHubClient:
                 )
             return results
         except GithubException as exc:
-            logger.warning(
-                "Could not fetch commits for '%s': %s", repo.full_name, exc
-            )
+            logger.warning("Could not fetch commits for '%s': %s", repo.full_name, exc)
             return []
 
     def close(self) -> None:
