@@ -185,6 +185,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Set lowercase image name
+        run: echo "IMAGE_NAME_LOWER=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
+      - name: Set short SHA
+        run: echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+
       - name: Download image tarball
         uses: actions/download-artifact@v4
         with:
@@ -197,7 +203,7 @@ jobs:
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@0.20.0
         with:
-          image-ref: "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${{ github.sha }}"
+          image-ref: "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}:sha-${{ env.SHORT_SHA }}"
           format: "table"
           exit-code: "1"            # FAIL the pipeline on critical CVEs
           ignore-unfixed: true
@@ -209,7 +215,7 @@ jobs:
         uses: aquasecurity/trivy-action@0.20.0
         if: always()               # Upload even if scan fails
         with:
-          image-ref: "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${{ github.sha }}"
+          image-ref: "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}:sha-${{ env.SHORT_SHA }}"
           format: "sarif"
           output: "trivy-results.sarif"
           ignore-unfixed: true
@@ -242,6 +248,9 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Set lowercase image name
+        run: echo "IMAGE_NAME_LOWER=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -254,7 +263,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}
           tags: |
             type=sha,prefix=sha-,format=short
             type=raw,value=latest
@@ -284,6 +293,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Set lowercase image name
+        run: echo "IMAGE_NAME_LOWER=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
       - name: Set up kubectl
         uses: azure/setup-kubectl@v4
         with:
@@ -299,7 +311,7 @@ jobs:
       - name: Update image tag in deployment manifest
         run: |
           IMAGE_TAG="sha-$(git rev-parse --short HEAD)"
-          sed -i "s|ghcr.io/your-org/devops-project-git-archiver:latest|${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${IMAGE_TAG}|g" \
+          sed -i "s|ghcr.io/your-org/devops-project-git-archiver:latest|${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}:${IMAGE_TAG}|g" \
             infrastructure/kubernetes/deployment.yaml
 
       - name: Apply Kubernetes manifests
