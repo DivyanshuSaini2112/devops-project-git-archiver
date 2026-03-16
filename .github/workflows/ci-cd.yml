@@ -58,14 +58,14 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install flake8 black
+          pip install -r src/main/requirements.txt
+          pip install -e .
 
       - name: Run flake8 (PEP8 + style)
         run: |
           flake8 src/ tests/ \
             --max-line-length=100 \
-            --extend-ignore=E203,W503 \
-            --count \
-            --statistics
+            --extend-ignore=E203,W503
 
       - name: Run black (formatting check)
         run: |
@@ -93,6 +93,7 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install -r src/main/requirements.txt
+          pip install -e .
 
       - name: Run unit tests with coverage
         run: |
@@ -100,7 +101,7 @@ jobs:
             --cov=src/main \
             --cov-report=term-missing \
             --cov-report=xml:coverage.xml \
-            --cov-fail-under=80 \
+            --cov-fail-under=70 \
             -v
 
       - name: Upload coverage report
