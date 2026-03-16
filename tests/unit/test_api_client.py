@@ -90,17 +90,15 @@ def test_get_all_repos_raises_on_api_error(mock_github_cls):
 @patch("src.main.api_client.Github")
 def test_get_last_commit_date_returns_datetime(mock_github_cls):
     expected_date = datetime(2023, 1, 15, 12, 0, 0, tzinfo=timezone.utc)
-    mock_commit = _make_commit(expected_date)
 
     mock_repo = MagicMock()
     mock_repo.full_name = "org/repo"
-    mock_repo.get_commits.return_value = [mock_commit]
+    mock_repo.pushed_at = expected_date
 
     client = GitHubClient(token="ghp_fake")
     result = client.get_last_commit_date(mock_repo)
 
     assert result == expected_date
-
 
 @patch("src.main.api_client.Github")
 def test_get_last_commit_date_makes_timezone_aware(mock_github_cls):
@@ -122,12 +120,7 @@ def test_get_last_commit_date_makes_timezone_aware(mock_github_cls):
 def test_get_last_commit_date_empty_repo_returns_none(mock_github_cls):
     mock_repo = MagicMock()
     mock_repo.full_name = "org/empty-repo"
-    mock_repo.get_commits.return_value = []  # empty iterable
-
-    # Simulate IndexError when accessing index 0
-    commits_mock = MagicMock()
-    commits_mock.__getitem__ = MagicMock(side_effect=IndexError)
-    mock_repo.get_commits.return_value = commits_mock
+    mock_repo.pushed_at = None
 
     client = GitHubClient(token="ghp_fake")
     result = client.get_last_commit_date(mock_repo)
