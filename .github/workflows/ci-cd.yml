@@ -129,6 +129,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Set lowercase image name
+        run: echo "IMAGE_NAME_LOWER=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -136,7 +139,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}
           tags: |
             type=sha,prefix=sha-,format=short
             type=ref,event=branch
@@ -157,8 +160,8 @@ jobs:
 
       - name: Save image to tarball for Trivy
         run: |
-          docker save ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-$(git rev-parse --short HEAD) \
-            -o /tmp/image.tar
+          docker save ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}:sha-$(git rev-parse --short HEAD) \
+          -o /tmp/image.tar
 
       - name: Upload image tarball
         uses: actions/upload-artifact@v4
