@@ -6,18 +6,19 @@ All GitHub API calls are mocked — no network access required.
 """
 
 import pytest
-from datetime import datetime, timedelta, timezone
-from unittest.mock import MagicMock, patch, PropertyMock
+from datetime import datetime, timezone
+from unittest.mock import MagicMock, patch
 
 from src.main.api_client import GitHubClient
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
 
-def _make_commit(date: datetime, message: str = "feat: initial commit", author: str = "alice"):
+def _make_commit(
+    date: datetime, message: str = "feat: initial commit", author: str = "alice"
+):
     commit = MagicMock()
     commit.commit.author.date = date
     commit.commit.author.name = author
