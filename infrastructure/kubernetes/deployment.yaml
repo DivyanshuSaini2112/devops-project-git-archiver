@@ -1,0 +1,106 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: git-archiver
+  namespace: default
+  labels:
+    app: git-archiver
+    version: "1.0"
+spec:
+  # Single replica — this is a batch job pattern, not a web server
+  replicas: 1
+  selector:
+    matchLabels:
+      app: git-archiver
+  template:
+    metadata:
+      labels:
+        app: git-archiver
+      annotations:
+        # Force rolling restart when ConfigMap changes
+        checksum/config: "{{ include (print .Template.BasePath '/configmap.yaml') . | sha256sum }}"
+    spec:
+      # Run as non-root (matches Dockerfile UID 1001)
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        runAsGroup: 1001
+        fsGroup: 1001
+
+      containers:
+        - name: archiver
+          # Replace with your registry path and tag; set via CI with git SHA
+          # Example: ghcr.io/your-org/devops-project-git-archiver:latest
+          image: ghcr.io/your-org/devops-project-git-archiver:latest
+          imagePullPolicy: Always
+
+          # Non-secret env vars from ConfigMap
+          envFrom:
+            - configMapRef:
+                name: archiver-config
+
+          # Sensitive values from Kubernetes Secret (created separately)
+          # kubectl create secret generic archiver-secrets \
+          #   --from-literal=API_KEY=ghp_xxx \
+          #   --from-literal=TARGET_ORG=your-org
+          env:
+            - name: API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: archiver-secrets
+                  key: API_KEY
+            - name: TARGET_ORG
+              valueFrom:
+                secretKeyRef:
+                  name: archiver-secrets
+                  key: TARGET_ORG
+
+          # Mount archive PVC
+          volumeMounts:
+            - name: archives-volume
+              mountPath: /app/archives
+
+          # Resource limits
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "128Mi"
+            limits:
+              cpu: "1000m"
+              memory: "512Mi"
+
+          # Liveness: confirm Python process is alive
+          livenessProbe:
+            exec:
+              command:
+                - python
+                - -c
+                - "import src.main.config"
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            failureThreshold: 3
+
+      volumes:
+        - name: archives-volume
+          persistentVolumeClaim:
+            claimName: archiver-pvc
+
+      restartPolicy: Always
+
+---
+# Persistent Volume Claim for archive storage
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: archiver-pvc
+  namespace: default
+  labels:
+    app: git-archiver
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  # Uncomment and set storageClassName if using a specific storage class:
+  # storageClassName: standard

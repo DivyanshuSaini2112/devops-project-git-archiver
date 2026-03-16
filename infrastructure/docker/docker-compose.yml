@@ -1,0 +1,62 @@
+version: "3.9"
+
+# =============================================================================
+# Git Repository Archiver — docker-compose
+#
+# Usage:
+#   docker-compose up           # run once and exit
+#   docker-compose up -d        # run in background
+#   docker-compose logs -f      # tail logs
+# =============================================================================
+
+services:
+  archiver:
+    build:
+      context: ../..           # project root (so COPY src/ works correctly)
+      dockerfile: infrastructure/docker/Dockerfile
+    container_name: git-archiver
+    restart: "no"              # batch job — don't auto-restart
+
+    # Load env from src/config/.env (gitignored); copy from .env.example first
+    env_file:
+      - ../../src/config/.env
+
+    # Override specific env vars for Docker runtime
+    environment:
+      STORAGE_DIR: /app/archives
+      LOG_LEVEL: INFO
+
+    volumes:
+      # Persistent named volume for archive output
+      - archives_data:/app/archives
+      # Optional: bind-mount logs directory on the host for easy access
+      # - ./logs:/app/logs
+
+    # Resource limits (adjust to your host capacity)
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 128M
+
+    # Logging configuration — structured JSON goes to stdout
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# =============================================================================
+# Named volumes
+# =============================================================================
+volumes:
+  archives_data:
+    driver: local
+    # Uncomment to persist to a specific host path:
+    # driver_opts:
+    #   type: none
+    #   o: bind
+    #   device: /data/git-archiver/archives

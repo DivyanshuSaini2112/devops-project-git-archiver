@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: archiver-config
+  namespace: default
+  labels:
+    app: git-archiver
+    version: "1.0"
+data:
+  # Archiving behaviour
+  STALE_DAYS: "90"
+  ARCHIVE_FORMAT: "tar.gz"
+
+  # Storage (matches the PVC mount path in deployment.yaml)
+  STORAGE_DIR: "/app/archives"
+
+  # Logging
+  LOG_LEVEL: "INFO"
+
+  # Dry run — set to "true" in staging to validate without writing archives
+  DRY_RUN: "false"
