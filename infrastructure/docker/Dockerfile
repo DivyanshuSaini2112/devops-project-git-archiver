@@ -13,6 +13,7 @@ LABEL version="1.0"
 # --- System dependencies ---
 # git is needed for subprocess git clone inside archiver.py
 RUN apt-get update \
+    && apt-get upgrade -y \
     && apt-get install -y --no-install-recommends \
         git \
         ca-certificates \
