@@ -100,6 +100,7 @@ def test_get_last_commit_date_returns_datetime(mock_github_cls):
 
     assert result == expected_date
 
+
 @patch("src.main.api_client.Github")
 def test_get_last_commit_date_makes_timezone_aware(mock_github_cls):
     """Naive datetime should be converted to UTC-aware."""
