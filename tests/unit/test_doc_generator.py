@@ -7,10 +7,8 @@ Unit tests for src/main/doc_generator.py.
 import os
 import tempfile
 
-import pytest
 
 from src.main.doc_generator import DocGenerator
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -117,6 +115,7 @@ def test_generate_summary_contains_archive_date():
         content = open(output).read()
         # Should contain current year at minimum
         import datetime
+
         assert str(datetime.datetime.now().year) in content
 
 

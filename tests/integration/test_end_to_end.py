@@ -11,11 +11,9 @@ import subprocess
 import tarfile
 import tempfile
 
-import pytest
 
 from src.main.archiver import generate_archive
 from src.main.doc_generator import DocGenerator
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -39,9 +37,7 @@ def _init_local_repo(path: str) -> None:
     readme = os.path.join(path, "README.md")
     with open(readme, "w") as f:
         f.write("# Test Repo\n")
-    subprocess.run(
-        ["git", "-C", path, "add", "."], check=True, capture_output=True
-    )
+    subprocess.run(["git", "-C", path, "add", "."], check=True, capture_output=True)
     subprocess.run(
         ["git", "-C", path, "commit", "-m", "Initial commit"],
         check=True,
@@ -103,7 +99,9 @@ def test_doc_generator_and_archive_pipeline():
         with tarfile.open(result) as tar:
             names = tar.getnames()
         summary_in_archive = any("ARCHIVE_SUMMARY.md" in n for n in names)
-        assert summary_in_archive, f"ARCHIVE_SUMMARY.md not found in archive. Members: {names}"
+        assert (
+            summary_in_archive
+        ), f"ARCHIVE_SUMMARY.md not found in archive. Members: {names}"
 
 
 def test_archive_contains_source_files():
@@ -143,4 +141,6 @@ def test_summary_md_is_valid_markdown():
         )
 
         content = open(output).read()
-        assert content.startswith("#"), "summary.md should start with a Markdown heading"
+        assert content.startswith(
+            "#"
+        ), "summary.md should start with a Markdown heading"

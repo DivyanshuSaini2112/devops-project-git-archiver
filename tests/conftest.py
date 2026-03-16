@@ -37,6 +37,7 @@ def mock_repo():
 def old_commit_date():
     """Return a datetime 200 days in the past (well beyond 90-day threshold)."""
     from datetime import timedelta
+
     return datetime.now(tz=timezone.utc) - timedelta(days=200)
 
 
@@ -44,4 +45,5 @@ def old_commit_date():
 def recent_commit_date():
     """Return a datetime 10 days in the past (within threshold)."""
     from datetime import timedelta
+
     return datetime.now(tz=timezone.utc) - timedelta(days=10)

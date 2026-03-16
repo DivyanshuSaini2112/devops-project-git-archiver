@@ -11,14 +11,13 @@ import tempfile
 import zipfile
 import pytest
 from datetime import datetime, timedelta, timezone
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 
 from src.main.archiver import (
     archive_repo,
     generate_archive,
     identify_stale_repos,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -99,7 +98,11 @@ def test_identify_stale_repos_mixed_list(mock_client_cls):
     mock_client = mock_client_cls.return_value
     mock_client.get_last_commit_date.side_effect = fake_last_commit
 
-    repos = [_make_repo("stale-repo-1"), _make_repo("active-repo"), _make_repo("stale-repo-2")]
+    repos = [
+        _make_repo("stale-repo-1"),
+        _make_repo("active-repo"),
+        _make_repo("stale-repo-2"),
+    ]
     result = identify_stale_repos(repos, stale_days=90)
 
     assert len(result) == 2
@@ -179,7 +182,9 @@ def test_archive_repo_dry_run_returns_none(mock_client_cls):
 @patch("src.main.archiver.generate_archive")
 @patch("src.main.archiver.DocGenerator")
 @patch("src.main.archiver.shutil")
-def test_archive_repo_full_pipeline(mock_shutil, mock_doc_cls, mock_gen_archive, mock_clone):
+def test_archive_repo_full_pipeline(
+    mock_shutil, mock_doc_cls, mock_gen_archive, mock_clone
+):
     """Verify the full pipeline executes in the correct order."""
     repo = _make_repo("test-repo")
 
@@ -187,7 +192,9 @@ def test_archive_repo_full_pipeline(mock_shutil, mock_doc_cls, mock_gen_archive,
     mock_client.get_contributor_stats.return_value = []
     mock_client.get_recent_commits.return_value = []
     mock_client.get_languages.return_value = {}
-    mock_client.get_last_commit_date.return_value = datetime.now(tz=timezone.utc) - timedelta(days=200)
+    mock_client.get_last_commit_date.return_value = datetime.now(
+        tz=timezone.utc
+    ) - timedelta(days=200)
 
     mock_clone.return_value = "/fake/clone/dir"
     mock_gen_archive.return_value = "/fake/archive.tar.gz"
