@@ -60,9 +60,9 @@ def test_get_all_repos_returns_list(mock_github_cls):
     mock_github = mock_github_cls.return_value
     fake_org = MagicMock()
     fake_repos = [
-        MagicMock(full_name=f"org/repo-1", name="repo-1", archived=False),
-        MagicMock(full_name=f"org/repo-archived", name="repo-archived", archived=True),
-        MagicMock(full_name=f"org/repo-2", name="repo-2", archived=False),
+        MagicMock(full_name="org/repo-1", name="repo-1", archived=False),
+        MagicMock(full_name="org/repo-archived", name="repo-archived", archived=True),
+        MagicMock(full_name="org/repo-2", name="repo-2", archived=False),
     ]
     fake_org.get_repos.return_value = fake_repos
     mock_github.get_organization.return_value = fake_org
@@ -138,7 +138,9 @@ def test_get_last_commit_date_exception(mock_github_cls):
     mock_repo = MagicMock()
     mock_repo.full_name = "org/error-repo"
     # Setting property to raise exception
-    type(mock_repo).pushed_at = property(lambda self: (_ for _ in ()).throw(Exception("Fake error")))
+    type(mock_repo).pushed_at = property(
+        lambda self: (_ for _ in ()).throw(Exception("Fake error"))
+    )
 
     client = GitHubClient(token="ghp_fake")
     result = client.get_last_commit_date(mock_repo)
@@ -149,6 +151,7 @@ def test_get_last_commit_date_exception(mock_github_cls):
 @patch("src.main.api_client.Github")
 def test_get_contributor_stats_returns_list(mock_github_cls):
     from github import GithubException
+
     contributors = [
         _make_contributor("alice", 50),
         _make_contributor("bob", 30),
@@ -160,12 +163,16 @@ def test_get_contributor_stats_returns_list(mock_github_cls):
     client = GitHubClient(token="ghp_fake")
     result = client.get_contributor_stats(mock_repo)
 
-    assert result == [{"login": "alice", "commits": 50}, {"login": "bob", "commits": 30}]
+    assert result == [
+        {"login": "alice", "commits": 50},
+        {"login": "bob", "commits": 30},
+    ]
 
 
 @patch("src.main.api_client.Github")
 def test_get_contributor_stats_error(mock_github_cls):
     from github import GithubException
+
     mock_repo = MagicMock()
     mock_repo.full_name = "org/repo"
     mock_repo.get_contributors.side_effect = GithubException(403, "Forbidden")
@@ -214,6 +221,7 @@ def test_get_contributors_returns_empty_on_error(mock_github_cls):
 @patch("src.main.api_client.Github")
 def test_get_recent_commits_error(mock_github_cls):
     from github import GithubException
+
     mock_repo = MagicMock()
     mock_repo.full_name = "org/repo"
     mock_repo.get_commits.side_effect = GithubException(404, "Not Found")

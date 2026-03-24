@@ -47,6 +47,7 @@ def _make_repo(name: str, archived: bool = False) -> MagicMock:
 # Logging and Formatters
 # ---------------------------------------------------------------------------
 
+
 def test_json_formatter():
     formatter = JSONFormatter()
     record = logging.LogRecord(
@@ -59,15 +60,16 @@ def test_json_formatter():
         exc_info=None,
     )
     record.repo = "org/my-repo"
-    
+
     formatted = formatter.format(record)
     data = json.loads(formatted)
-    
+
     assert data["level"] == "INFO"
     assert data["message"] == "Test message"
     assert data["repo"] == "org/my-repo"
     assert data["logger"] == "test_logger"
     assert "timestamp" in data
+
 
 def test_pretty_formatter():
     formatter = PrettyFormatter()
@@ -80,7 +82,7 @@ def test_pretty_formatter():
         args=(),
         exc_info=None,
     )
-    
+
     formatted_no_repo = formatter.format(record)
     assert "WARNING " in formatted_no_repo
     assert "Warning message" in formatted_no_repo
@@ -99,6 +101,7 @@ def test_setup_logging_file(mock_file_handler, mock_get_logger):
     setup_logging()
     mock_file_handler.assert_called_once()
     mock_root.addHandler.assert_called_once()
+
 
 @patch("src.main.archiver.logging.getLogger")
 @patch("src.main.archiver.logging.StreamHandler")
@@ -191,14 +194,15 @@ def test_identify_stale_repos_mixed_list(mock_client_cls):
 # clone_repo
 # ---------------------------------------------------------------------------
 
+
 @patch("subprocess.run")
 def test_clone_repo_success(mock_run):
     mock_run.return_value = MagicMock(returncode=0)
-    
+
     with tempfile.TemporaryDirectory() as tmp:
         dest = os.path.join(tmp, "cloned")
         res = clone_repo("https://github.com/org/repo.git", dest)
-        
+
         assert res == dest
         mock_run.assert_called_once()
 
@@ -206,11 +210,12 @@ def test_clone_repo_success(mock_run):
 @patch("subprocess.run")
 def test_clone_repo_failure(mock_run):
     mock_run.return_value = MagicMock(returncode=1, stderr="clone failed")
-    
+
     with tempfile.TemporaryDirectory() as tmp:
         dest = os.path.join(tmp, "cloned")
         with pytest.raises(RuntimeError, match="git clone failed"):
             clone_repo("https://github.com/org/repo.git", dest)
+
 
 # ---------------------------------------------------------------------------
 # generate_archive
@@ -304,17 +309,20 @@ def test_archive_repo_full_pipeline(
             mock_tmp.return_value.__enter__.return_value = storage
 
             # Should not raise, returns the final path
-            result = archive_repo(repo, storage_dir=storage, client=mock_client, dry_run=False)
+            result = archive_repo(
+                repo, storage_dir=storage, client=mock_client, dry_run=False
+            )
             assert result is not None
             assert "test-repo" in result
             assert result.endswith(".tar.gz")
+
 
 @patch("src.main.archiver.clone_repo")
 def test_archive_repo_clone_fails(mock_clone):
     repo = _make_repo("fail-repo")
     mock_client = MagicMock()
     mock_clone.side_effect = RuntimeError("git failed")
-    
+
     result = archive_repo(repo, storage_dir="/tmp", client=mock_client, dry_run=False)
     assert result is None
 
@@ -322,6 +330,7 @@ def test_archive_repo_clone_fails(mock_clone):
 # ---------------------------------------------------------------------------
 # main CLI
 # ---------------------------------------------------------------------------
+
 
 @patch("builtins.input", side_effect=["org1", "60", "zip", "yes", "/tmp/store", "yes"])
 @patch("src.main.archiver.setup_logging")
@@ -336,18 +345,20 @@ def test_main_cli_flow(
     mock_client_instance.get_all_repos.return_value = [_make_repo("repo1")]
     mock_identify.return_value = [_make_repo("repo1")]
     mock_archive_repo.return_value = "/tmp/store/repo1.zip"
-    
+
     main()
-    
+
     mock_setup_logging.assert_called_once()
     mock_identify.assert_called_once()
     mock_archive_repo.assert_called_once()
+
 
 @patch("builtins.input", side_effect=["org1", "60", "zip", "yes", "/tmp/store", "no"])
 def test_main_cli_aborts(mock_input):
     with pytest.raises(SystemExit) as exc:
         main()
     assert exc.value.code == 0
+
 
 @patch("builtins.input", side_effect=["org1", "60", "zip", "yes", "/tmp/store", "yes"])
 @patch("src.main.archiver.setup_logging")
@@ -356,6 +367,7 @@ def test_main_cli_fails_no_token(mock_setup_logging, mock_input):
     with pytest.raises(SystemExit) as exc:
         main()
     assert exc.value.code == 1
+
 
 @patch("builtins.input", side_effect=["", "60", "zip", "yes", "/tmp/store", "yes"])
 @patch("src.main.archiver.setup_logging")
