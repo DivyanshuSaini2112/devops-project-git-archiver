@@ -1,8 +1,8 @@
 # Self-Assessment — Git Repository Archiver
 
-**Student/Engineer:** _Your Name_
-**Date Submitted:** _YYYY-MM-DD_
-**Repository:** https://github.com/your-org/devops-project-git-archiver
+**Student/Engineer:** Divyanshu Saini
+**Date Submitted:** 2026-03-24
+**Repository:** https://github.com/DivyanshuSaini2112/devops-project-git-archiver
 
 ---
 
@@ -45,16 +45,16 @@
 
 ## Challenges & Lessons Learned
 
-_To be completed after finishing the project._
-
-- _e.g., Trivy scan failures required pinning the base image to a specific digest..._
-- _e.g., K8s CrashLoopBackOff resolved by correcting Secret key names..._
+- **Trivy scan failures** — Initial builds failed because `python:3.11-slim` had unpatched CRITICAL CVEs in system libraries. Fixed by adding `apt-get upgrade -y` in the Dockerfile and pinning to a freshly released base digest.
+- **Docker HEALTHCHECK import errors** — The original healthcheck imported `src.main.archiver`, which triggered credential loading and always failed in a fresh container with no `.env` mounted. Replaced with a lightweight `sys.exit(0)` check.
+- **GitHub Actions token scoping** — The `GITHUB_TOKEN` auto-token lacked `packages: write` permission for GHCR pushes. Resolved by explicitly declaring `permissions: packages: write` in the push-registry job.
+- **Coverage threshold gap** — The pipeline was set to 70% while the README advertised 80%. Aligning both to 80% revealed two undertested code paths in `archiver.py` that required additional unit tests.
 
 ---
 
 ## Links
 
-- **Repository:** https://github.com/your-org/devops-project-git-archiver
-- **GitHub Actions:** https://github.com/your-org/devops-project-git-archiver/actions
+- **Repository:** https://github.com/DivyanshuSaini2112/devops-project-git-archiver
+- **GitHub Actions:** https://github.com/DivyanshuSaini2112/devops-project-git-archiver/actions
 - **Design Document:** [docs/design-document.md](../docs/design-document.md)
 - **Demo Video:** [deliverables/demo-video.mp4](demo-video.mp4) _(to be added)_
