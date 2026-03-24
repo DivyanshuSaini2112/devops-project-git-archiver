@@ -38,12 +38,21 @@ from src.main.config import (
 from src.main.doc_generator import DocGenerator
 
 # ---------------------------------------------------------------------------
-# Structured JSON logging
+# Logging formatters
 # ---------------------------------------------------------------------------
+
+# Level label widths for alignment
+_LEVEL_COLORS = {
+    "DEBUG": "DEBUG   ",
+    "INFO": "INFO    ",
+    "WARNING": "WARNING ",
+    "ERROR": "ERROR   ",
+    "CRITICAL": "CRITICAL",
+}
 
 
 class JSONFormatter(logging.Formatter):
-    """Emit log records as single-line JSON for machine parsing."""
+    """Emit log records as single-line JSON for machine parsing (file logs)."""
 
     def format(self, record: logging.LogRecord) -> str:
         payload = {
@@ -56,18 +65,33 @@ class JSONFormatter(logging.Formatter):
         return json.dumps(payload)
 
 
+class PrettyFormatter(logging.Formatter):
+    """Human-readable single-line formatter for interactive terminal use."""
+
+    def format(self, record: logging.LogRecord) -> str:
+        label = _LEVEL_COLORS.get(record.levelname, record.levelname)
+        repo = getattr(record, "repo", None)
+        msg = record.getMessage()
+        if repo:
+            return f"  [{label}]  ({repo})  {msg}"
+        return f"  [{label}]  {msg}"
+
+
 def setup_logging() -> None:
-    """Configure root logger with JSON formatter."""
+    """Configure root logger.
+
+    * File target  → structured JSON (machine-readable, for CI / log aggregators)
+    * Console only → clean PrettyFormatter (human-readable for interactive runs)
+    """
     level = getattr(logging, LOG_LEVEL.upper(), logging.INFO)
-    handler: logging.Handler
 
     if LOG_FILE:
         os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
-        handler = logging.FileHandler(LOG_FILE, encoding="utf-8")
+        handler: logging.Handler = logging.FileHandler(LOG_FILE, encoding="utf-8")
+        handler.setFormatter(JSONFormatter())
     else:
         handler = logging.StreamHandler()
-
-    handler.setFormatter(JSONFormatter())
+        handler.setFormatter(PrettyFormatter())
 
     root = logging.getLogger()
     root.setLevel(level)
@@ -281,7 +305,58 @@ def archive_repo(
 # ---------------------------------------------------------------------------
 
 
+def _ask(prompt: str, default: str) -> str:
+    """Prompt the user for input, returning default if Enter is pressed."""
+    val = input(f"  {prompt} [{default}]: ").strip()
+    return val if val else default
+
+
 def main() -> None:
+    # ------------------------------------------------------------------
+    # Interactive CLI prompts (before logging so banner appears cleanly)
+    # ------------------------------------------------------------------
+    print("=" * 34)
+    print("  === Git Repository Archiver ===")
+    print("=" * 34)
+    print()
+
+    target_org = _ask("GitHub Organisation name", TARGET_ORG or "")
+    stale_days_str = _ask("Stale threshold (days)", str(STALE_DAYS))
+    archive_format = _ask("Archive format (tar.gz/zip)", ARCHIVE_FORMAT)
+    dry_run_str = _ask("Dry run? (yes/no)", "yes" if DRY_RUN else "no")
+    storage_dir = _ask("Storage directory", STORAGE_DIR)
+
+    # Parse collected values
+    try:
+        stale_days = int(stale_days_str)
+    except ValueError:
+        stale_days = STALE_DAYS
+
+    dry_run = dry_run_str.lower() in ("yes", "y", "true", "1")
+
+    # Summary table
+    print()
+    print("+----------------------+----------------------------------------+")
+    print("| Setting              | Value                                  |")
+    print("+----------------------+----------------------------------------+")
+    print(f"| Organisation         | {target_org:<38} |")
+    print(f"| Stale threshold      | {str(stale_days) + ' days':<38} |")
+    print(f"| Archive format       | {archive_format:<38} |")
+    print(f"| Dry run              | {'Yes' if dry_run else 'No':<38} |")
+    print(f"| Storage directory    | {storage_dir:<38} |")
+    print("+----------------------+----------------------------------------+")
+    print()
+
+    proceed = input("  Proceed? (yes/no) [yes]: ").strip().lower()
+    if proceed in ("no", "n"):
+        print("  Aborted by user.")
+        raise SystemExit(0)
+
+    print()
+
+    # ------------------------------------------------------------------
+    # Logging + runtime — use the interactively collected values
+    # ------------------------------------------------------------------
     setup_logging()
     logger.info("Git Repository Archiver started.")
 
@@ -289,13 +364,13 @@ def main() -> None:
         logger.error("API_KEY is not set. Aborting.")
         raise SystemExit(1)
 
-    if not TARGET_ORG:
+    if not target_org:
         logger.error("TARGET_ORG is not set. Aborting.")
         raise SystemExit(1)
 
     client = GitHubClient(token=GITHUB_TOKEN)
-    repos = client.get_all_repos(TARGET_ORG)
-    stale = identify_stale_repos(repos)
+    repos = client.get_all_repos(target_org)
+    stale = identify_stale_repos(repos, stale_days=stale_days)
 
     if not stale:
         logger.info("No stale repositories found. Exiting.")
@@ -303,7 +378,7 @@ def main() -> None:
 
     archived_count = 0
     for repo in stale:
-        result = archive_repo(repo, client=client)
+        result = archive_repo(repo, storage_dir=storage_dir, client=client, dry_run=dry_run)
         if result:
             archived_count += 1
 
