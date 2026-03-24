@@ -378,7 +378,9 @@ def main() -> None:
 
     archived_count = 0
     for repo in stale:
-        result = archive_repo(repo, storage_dir=storage_dir, client=client, dry_run=dry_run)
+        result = archive_repo(
+            repo, storage_dir=storage_dir, client=client, dry_run=dry_run
+        )
         if result:
             archived_count += 1
 
