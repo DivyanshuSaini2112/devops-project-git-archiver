@@ -102,7 +102,7 @@ jobs:
             --cov=src/main \
             --cov-report=term-missing \
             --cov-report=xml:coverage.xml \
-            --cov-fail-under=70 \
+            --cov-fail-under=80 \
             -v
 
       - name: Upload coverage report
@@ -307,23 +307,28 @@ jobs:
           version: "v1.29.0"
 
       - name: Configure kubectl credentials
-        # KUBE_CONFIG_DATA must be base64-encoded kubeconfig stored as a GitHub Secret
+        id: kubeconfig
         run: |
+          # If the kubeconfig secret is not provided, skip deployment.
           if [ -z "${{ secrets.KUBE_CONFIG_DATA }}" ]; then
             echo "KUBE_CONFIG_DATA secret is not set; skipping deployment."
+            echo "deploy_enabled=false" >> $GITHUB_OUTPUT
             exit 0
           fi
 
           mkdir -p ~/.kube
           echo "${{ secrets.KUBE_CONFIG_DATA }}" | base64 -d > ~/.kube/config
           chmod 600 ~/.kube/config
+          echo "deploy_enabled=true" >> $GITHUB_OUTPUT
 
-      - name: Verify cluster access (skip deploy if unreachable)
+      - name: Check cluster access
+        id: cluster-check
+        if: steps.kubeconfig.outputs.deploy_enabled == 'true'
         run: |
-          echo "Checking Kubernetes cluster access..."
-          if ! kubectl cluster-info > /dev/null 2>&1; then
-            echo "Cannot reach Kubernetes cluster; skipping deployment."
-            exit 0
+          if kubectl cluster-info > /dev/null 2>&1; then
+            echo "cluster_reachable=true" >> $GITHUB_OUTPUT
+          else
+            echo "cluster_reachable=false" >> $GITHUB_OUTPUT
           fi
 
       - name: Update image tag in deployment manifest
@@ -333,18 +338,21 @@ jobs:
             infrastructure/kubernetes/deployment.yaml
 
       - name: Apply Kubernetes manifests
+        if: steps.cluster-check.outputs.cluster_reachable == 'true'
         run: |
           kubectl apply --validate=false -f infrastructure/kubernetes/configmap.yaml
           kubectl apply --validate=false -f infrastructure/kubernetes/deployment.yaml
           kubectl apply --validate=false -f infrastructure/kubernetes/service.yaml
 
       - name: Wait for rollout to complete
+        if: steps.cluster-check.outputs.cluster_reachable == 'true'
         run: |
           kubectl rollout status deployment/git-archiver \
             --namespace=default \
             --timeout=120s
 
       - name: Verify deployment
+        if: steps.cluster-check.outputs.cluster_reachable == 'true'
         run: |
           kubectl get pods -l app=git-archiver -n default
           kubectl get deployment git-archiver -n default
