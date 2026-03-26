@@ -24,6 +24,7 @@ on:
       - develop
   pull_request:
     branches:
+      - main
       - develop
 
 # Cancel in-flight runs on the same branch when a new push arrives
@@ -63,13 +64,11 @@ jobs:
 
       - name: Run flake8 (PEP8 + style)
         run: |
-          flake8 src/ tests/ \
-            --max-line-length=100 \
-            --extend-ignore=E203,W503
+          flake8 src tests --config=setup.cfg
 
       - name: Run black (formatting check)
         run: |
-          black --check --diff src/ tests/
+          black --check --diff src tests
 
 # =============================================================================
 # Job 2 — Unit Tests & Coverage

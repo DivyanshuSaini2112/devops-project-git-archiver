@@ -150,8 +150,6 @@ def test_get_last_commit_date_exception(mock_github_cls):
 
 @patch("src.main.api_client.Github")
 def test_get_contributor_stats_returns_list(mock_github_cls):
-    from github import GithubException
-
     contributors = [
         _make_contributor("alice", 50),
         _make_contributor("bob", 30),
