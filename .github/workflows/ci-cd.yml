@@ -26,7 +26,6 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
   PYTHON_VERSION: "3.11"
 
 # =============================================================================
@@ -74,6 +73,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # GHCR requires image names to be fully lowercase
+      - name: Set lowercase image name
+        run: echo "IMAGE_NAME=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -101,6 +104,10 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      # GHCR requires image names to be fully lowercase
+      - name: Set lowercase image name
+        run: echo "IMAGE_NAME=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
@@ -133,6 +140,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # GHCR requires image names to be fully lowercase
+      - name: Set lowercase image name
+        run: echo "IMAGE_NAME=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
       - name: Set up kubectl
         uses: azure/setup-kubectl@v4
         with:
@@ -147,6 +158,11 @@ jobs:
           mkdir -p ~/.kube
           echo "${{ secrets.KUBE_CONFIG_DATA }}" | base64 -d > ~/.kube/config
           chmod 600 ~/.kube/config
+
+      - name: Update image tag in manifest
+        run: |
+          sed -i "s|ghcr.io/your-org/devops-project-git-archiver:latest|${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}|g" \
+            infrastructure/kubernetes/deployment.yaml
 
       - name: Apply Kubernetes manifests
         run: |
